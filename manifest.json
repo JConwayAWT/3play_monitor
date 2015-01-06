@@ -1,0 +1,28 @@
+{
+  "manifest_version": 2,
+
+  "name": "3Play Media Market Watch",
+  "description": "Takes the stress out of getting editing jobs for 3Play.",
+  "version": "1.0",
+  "browser_action": {
+    "default_icon": {
+       "19": "icon.png",
+       "38": "icon_38.png"
+    }
+  },
+  "icons": {
+    "48": "icon_38.png"
+  },
+  "content_scripts": [
+    {
+    "matches": ["https://jobs.3playmedia.com/jobs","http://jobs.3playmedia.com/jobs"],
+    "js": ["jquery.min.js","inject.js"]
+    }
+  ],
+  "background":{
+    "scripts": ["editorMarket.js","jquery.min.js"]
+  },
+  "permissions": [
+    "tabs","activeTab","https://jobs.3playmedia.com/jobs","http://jobs.3playmedia.com/jobs","notifications"
+  ]
+}
