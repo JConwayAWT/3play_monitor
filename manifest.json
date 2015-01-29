@@ -15,7 +15,7 @@
   },
   "content_scripts": [
     {
-    "matches": ["https://jobs.3playmedia.com/jobs","http://jobs.3playmedia.com/jobs"],
+    "matches": ["https://jobs.3playmedia.com/available_jobs","http://jobs.3playmedia.com/available_jobs"],
     "js": ["jquery.min.js","inject.js"]
     }
   ],
@@ -23,6 +23,6 @@
     "scripts": ["editorMarket.js","jquery.min.js"]
   },
   "permissions": [
-    "tabs","activeTab","https://jobs.3playmedia.com/jobs","http://jobs.3playmedia.com/jobs","notifications"
+    "tabs","activeTab","http://jobs.3playmedia.com/available_jobs","https://jobs.3playmedia.com/available_jobs","notifications"
   ]
 }

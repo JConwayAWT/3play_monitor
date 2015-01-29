@@ -28,8 +28,7 @@ chrome.browserAction.onClicked.addListener(function(tab){
 
                 tellThemWeStarted();
 
-                oldIndividualDOM = null;
-                oldGroupedDOM = null;
+                oldDOM = null;
 
                 chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
 
@@ -44,7 +43,7 @@ chrome.browserAction.onClicked.addListener(function(tab){
                         type: 'POST',
                         data: {
                             user_session: {
-                                email: "user@domain.com", password: "yourpassword123"
+                                email: "PUT YOUR EMAIL@ADDRESS.HERE", password: "PUT YOUR PASSWORD HERE"
                             }
                         },
                     })
@@ -55,59 +54,58 @@ chrome.browserAction.onClicked.addListener(function(tab){
                     startTimerDisplayFromThirty();
                     refresherID = setInterval(function() {
 
-                        chrome.tabs.reload(currentID, { bypassCache: true }, function() {
+                        // this needs to be replaced with a click insert script
+                        // chrome.tabs.reload(currentID, { bypassCache: true }, function() {
+                        chrome.tabs.executeScript(currentID, {file: "refreshMarket.js"}, function() {
+                            setTimeout(function(){
+                                stopTimerDisplayCompletely();
+                                startTimerDisplayFromThirty();
+                                chrome.tabs.executeScript(currentID, {file: "jquery.min.js"}, function() {
+                                    chrome.tabs.executeScript(currentID, {
+                                        file:      'inject.js',
+                                        runAt:     'document_idle',
+                                        allFrames: false
+                                    }, function(results) {
 
-                            stopTimerDisplayCompletely();
-                            startTimerDisplayFromThirty();
-                            chrome.tabs.executeScript(currentID, {
-                                file:      'inject.js',
-                                runAt:     'document_idle',
-                                allFrames: false
-                            }, function(results) {
+                                        if (chrome.runtime.lastError) {
+                                            console.log('3Play Market Watch Error:\n' + chrome.runtime.lastError.message);
+                                            return;
+                                        } else if (results.length == 0) {
+                                            console.log('3Play Market Watch Error: No results!');
+                                            return;
+                                        }
 
-                                //result will be [indies, grouped]
-                                if (chrome.runtime.lastError) {
-                                    console.log('3Play Market Watch Error:\n' + chrome.runtime.lastError.message);
-                                    return;
-                                } else if (results.length == 0) {
-                                    console.log('3Play Market Watch Error: No results!');
-                                    return;
-                                }
+                                        newDOM = $(results[0][0]);
 
-                                newIndividualDOM = $(results[0][0]);
-                                newGroupedDOM = $(results[0][1]);
+                                        if (($(newDOM).text() == $(oldDOM).text())) {
+                                            oldDOM = newDOM;
+                                        }
+                                        else if (firstRefresh){
+                                            firstRefresh = false;
 
+                                            checkForJobsOnFirstRefresh(newDOM);
 
-                                if (($(newIndividualDOM).text() == $(oldIndividualDOM).text()) && ($(newGroupedDOM).text() == $(oldGroupedDOM).text())){
-                                    oldIndividualDOM = newIndividualDOM;
-                                    oldGroupedDOM = newGroupedDOM;
-                                }
-                                else if (firstRefresh){
-                                    firstRefresh = false;
+                                            oldDOM = newDOM;
+                                        }
+                                        else{
+                                            var opt = {
+                                                type: "basic",
+                                                title: "3Play Changes",
+                                                message: throwUpdateMessage(newDOM),
+                                                iconUrl: "medium_icon.png"
+                                            }
 
-                                    checkForJobsOnFirstRefresh(newIndividualDOM,newGroupedDOM);
+                                            chrome.notifications.create("1",opt,function(){});
 
-                                    oldIndividualDOM = newIndividualDOM;
-                                    oldGroupedDOM = newGroupedDOM;
-                                }
-                                else{
-                                    var opt = {
-                                        type: "basic",
-                                        title: "3Play Changes",
-                                        message: throwUpdateMessage(newIndividualDOM,newGroupedDOM),
-                                        iconUrl: "medium_icon.png"
-                                    }
+                                            setTimeout(function(){
+                                                chrome.notifications.clear("1",function(){});
+                                            },2000);
 
-                                    chrome.notifications.create("1",opt,function(){});
-
-                                    setTimeout(function(){
-                                        chrome.notifications.clear("1",function(){});
-                                    },2000);
-
-                                    oldIndividualDOM = newIndividualDOM;
-                                    oldGroupedDOM = newGroupedDOM;
-                                }
-                            });
+                                            oldDOM = newDOM;
+                                        }
+                                    });
+                                }); //close jquery.min.js execution
+                            }, 250);
                         });
                     }, 31*1000);
                 });
@@ -156,31 +154,10 @@ chrome.windows.onRemoved.addListener(function(winID){
     }
 });
 
-function throwUpdateMessage(indy, group){
-    obviousIndyJobs = $(indy).find("tbody").children().length;
-    obviousGroupJobs = $(group).find("tbody").children().length;
+function throwUpdateMessage(dom){
+    obviousJobs = $(dom).find("tbody").last().find(".clickable_row").length;
 
-    if ($(indy).first().hasClass("pagination")){
-        obviousIndyJobs = (parseInt($(indy).first().children().last().prev().text()) - 1) * 7;
-        obviousIndyJobs = obviousIndyJobs + "+"
-    }
-
-    if ($(group).first().hasClass("pagination")){
-        obviousGroupJobs = (parseInt($(group).first().children().last().prev().text()) - 1) * 7;
-        obviousGroupJobs = obviousGroupJobs + "+"
-    }
-
-    if (parseInt(obviousIndyJobs) > 0){
-        indyTotalAmount = totalAmount(indy);
-        indyAverageRate = averageRate(indy, indyTotalAmount);
-    }
-
-    if (parseInt(obviousGroupJobs) > 0){
-        groupTotalAmount = totalAmount(group);   
-        groupAverageRate = averageRate(group, groupTotalAmount);
-    }
-
-    if (parseInt(obviousIndyJobs) == 0 && parseInt(obviousGroupJobs) == 0){
+    if (obviousJobs == 0){
         var opt = {
             type: "basic",
             title: "All Jobs Cleared",
@@ -191,38 +168,16 @@ function throwUpdateMessage(indy, group){
         setTimeout(function(){chrome.notifications.clear("jobsCleared",function(){});},4000);
         audioNotificationDown();
     }
-    else if (parseInt(obviousIndyJobs) > 0 && parseInt(obviousGroupJobs) == 0){
-        var opt = {
-            type: "basic",
-            title: "Single Jobs Available",
-            message: obviousIndyJobs + " Job(s) || $" + indyTotalAmount + " || Avg $" + indyAverageRate + "/min\r\nMax Adjustment: " + getMaximumAdjustment($(indy)) + "%",
-            iconUrl: "medium_icon.png"
-        }
-        chrome.notifications.create("singleJobs",opt,function(){});
-        setTimeout(function(){chrome.notifications.clear("singleJobs",function(){});},4000);
-        audioNotificationUp();
-    }
-    else if (parseInt(obviousGroupJobs) > 0 && parseInt(obviousIndyJobs) == 0){
-        var opt = {
-            type: "basic",
-            title: "Group Jobs Available",
-            message: obviousGroupJobs + " Job(s) || $" + groupTotalAmount + " || Avg $" + groupAverageRate + "/min",
-            iconUrl: "medium_icon.png"
-        }
-        chrome.notifications.create("groupJobs",opt,function(){});
-        setTimeout(function(){chrome.notifications.clear("groupJobs",function(){});},4000);
-        audioNotificationUp();
-    }
+
     else{
         var opt = {
             type: "basic",
-            title: "Mixed Jobs Available",
-            message: "Single Jobs:\r\n" + obviousIndyJobs + " Job(s) || $" + indyTotalAmount + " || Avg $" + indyAverageRate + "/min"
-            + "\r\nGroup Jobs:\r\n" + obviousGroupJobs + " Job(s) || $" + groupTotalAmount + " || Avg $" + groupAverageRate + "/min\r\nMax Adjustment: " + getMaximumAdjustment($(indy)) + "%",
+            title: "Jobs available",
+            message: "There are jobs available in the market",
             iconUrl: "medium_icon.png"
         }
-        chrome.notifications.create("mixedJobs",opt,function(){});
-        setTimeout(function(){chrome.notifications.clear("mixedJobs",function(){});},4500);
+        chrome.notifications.create("jobsAvailable",opt,function(){});
+        setTimeout(function(){chrome.notifications.clear("jobsAvailable",function(){});},4000);
         audioNotificationUp();
     }
 }
@@ -290,11 +245,11 @@ function totalAmount(currentHTML){
     return sum.toFixed(2);
 }
 
-function checkForJobsOnFirstRefresh(indy, group){
-    obviousIndyJobs = $(indy).find("tbody").children().length;
-    obviousGroupJobs = $(group).find("tbody").children().length;
-    if (obviousIndyJobs + obviousGroupJobs > 0){
-        throwUpdateMessage(indy,group);
+function checkForJobsOnFirstRefresh(dom){
+    obviousJobs = $(dom).find("tbody").last().find(".clickable_row").length;
+
+    if (obviousJobs > 0){
+        throwUpdateMessage(dom);
     }
 }
 

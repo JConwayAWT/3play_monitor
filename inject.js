@@ -1,4 +1,7 @@
-individualJobsHTML = $(".individual_jobs").html();
-groupedJobsHTML = $(".grouped_jobs").html();
+jobsHTML = $("#market-container").html();
 
-[individualJobsHTML,groupedJobsHTML];
+if ($(".preview_td").length > 0){
+  $(".preview_td").first().click();
+}
+
+[jobsHTML];
